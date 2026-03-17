@@ -18,7 +18,7 @@ This is the documentation site for **[Project Name]**.
 | | |
 |---|---|
 | [Contributing Guide](CONTRIBUTING.md) | How to write and review docs |
-| [Changelog](../CHANGELOG.md) | What has changed |
+| `Changelog` at the repository root | What has changed |
 
 ---
 
