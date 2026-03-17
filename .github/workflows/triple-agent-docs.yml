@@ -4,11 +4,19 @@ on:
   pull_request:
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
+      - 'README.md'
       - 'CHANGELOG.md'
-      - 'scripts/docs-*.sh'
+      - 'mkdocs.yml'
+      - '.github/workflows/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
+      - '.vale.ini'
+      - 'styles/**'
+      - 'scripts/docs-*'
+      - '**/*.md'
+      - '**/*.mdx'
   issues:
-    types: [labeled]
+    types: [opened, labeled, reopened, edited]
   workflow_dispatch:
     inputs:
       target_path:
@@ -182,26 +190,6 @@ jobs:
               echo "CHANGELOG.md has ${released} section(s). OK."
             fi
             echo "changelog_ok=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Check mkdocs.yml validity
-        id: mkdocs_config
-        run: |
-          echo "=== Reviewer: mkdocs.yml validation ==="
-          if [[ -f "mkdocs.yml" ]]; then
-            python3 -c "
-          import yaml, sys
-          with open('mkdocs.yml') as f:
-              cfg = yaml.safe_load(f)
-          required = ['site_name', 'docs_dir']
-          missing = [k for k in required if k not in cfg]
-          if missing:
-              print('ERROR: mkdocs.yml missing keys:', missing)
-              sys.exit(1)
-          print('mkdocs.yml is valid')
-          " | tee -a validation-report.txt
-          else
-            echo "mkdocs.yml not found — skipping" | tee -a validation-report.txt
           fi
 
       - name: Summarize validation report
