@@ -43,3 +43,4 @@ which applies a triple-agent documentation workflow:
 - **Reviewer/Validator** — checks consistency and publishes
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+
