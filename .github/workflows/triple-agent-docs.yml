@@ -1,0 +1,236 @@
+name: triple-agent-docs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'CHANGELOG.md'
+      - 'scripts/docs-*.sh'
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      target_path:
+        description: 'Docs path to validate (default: docs/)'
+        required: false
+        default: 'docs/'
+
+jobs:
+  content_strategist:
+    name: Content Strategist — IA and Coverage Review
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'docs-request'))
+    outputs:
+      coverage_report: ${{ steps.coverage.outputs.report }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify docs structure exists
+        id: structure
+        run: |
+          echo "=== Content Strategist: IA and structure check ==="
+          if [[ ! -d "docs" ]]; then
+            echo "ERROR: docs/ directory not found"
+            exit 1
+          fi
+          echo "docs_dir_found=true" >> "$GITHUB_OUTPUT"
+
+          # List all markdown files
+          echo "--- Markdown inventory ---"
+          find docs/ -name "*.md" | sort
+
+          # Check for index page
+          if [[ ! -f "docs/index.md" ]]; then
+            echo "WARNING: docs/index.md is missing — landing page required"
+          fi
+
+          # Check for CONTRIBUTING guide
+          if [[ ! -f "docs/CONTRIBUTING.md" ]]; then
+            echo "WARNING: docs/CONTRIBUTING.md is missing"
+          fi
+
+          echo "structure_check=complete" >> "$GITHUB_OUTPUT"
+
+      - name: Coverage and audience gap scan
+        id: coverage
+        run: |
+          echo "=== Coverage scan ==="
+          REPORT=""
+
+          # Count docs pages
+          total=$(find docs/ -name "*.md" | wc -l | tr -d ' ')
+          REPORT="total_pages=${total}"
+
+          # Check for orphaned pages (no cross-reference) — lightweight heuristic
+          orphan_count=0
+          while IFS= read -r page; do
+            basename_page=$(basename "$page" .md)
+            refs=$(grep -r "$basename_page" docs/ --include="*.md" -l 2>/dev/null | grep -v "^${page}$" | wc -l | tr -d ' ')
+            if [[ "$refs" -eq 0 ]] && [[ "$basename_page" != "index" ]]; then
+              echo "POTENTIAL_ORPHAN: $page (no references found)"
+              orphan_count=$((orphan_count + 1))
+            fi
+          done < <(find docs/ -name "*.md")
+
+          REPORT="${REPORT} orphan_candidates=${orphan_count}"
+          echo "report=${REPORT}" >> "$GITHUB_OUTPUT"
+          echo "Coverage scan complete: $REPORT"
+
+  technical_writer:
+    name: Technical Writer — Format and Style Checks
+    runs-on: ubuntu-latest
+    needs: content_strategist
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python for MkDocs
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install MkDocs and plugins
+        run: |
+          pip install --quiet mkdocs mkdocs-material 2>&1 | tail -5
+          echo "MkDocs version: $(mkdocs --version)"
+
+      - name: Markdown lint (basic)
+        run: bash scripts/docs-validate.sh
+
+      - name: MkDocs build (strict)
+        run: |
+          echo "=== Technical Writer: MkDocs build ==="
+          if [[ -f "mkdocs.yml" ]]; then
+            mkdocs build --strict --site-dir /tmp/docs-site 2>&1
+            echo "mkdocs_build=success" >> "$GITHUB_ENV"
+          else
+            echo "WARNING: mkdocs.yml not found — skipping MkDocs build"
+            echo "mkdocs_build=skipped" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload built site as artifact
+        if: env.mkdocs_build == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site-preview
+          path: /tmp/docs-site/
+          retention-days: 7
+
+  reviewer_validator:
+    name: Reviewer/Validator — Consistency and Publish Readiness
+    runs-on: ubuntu-latest
+    needs: [content_strategist, technical_writer]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check internal links
+        id: links
+        run: |
+          echo "=== Reviewer: Internal link check ==="
+          ERRORS=0
+          REPORT_LINES=()
+
+          while IFS= read -r mdfile; do
+            # Extract markdown links [text](target)
+            while IFS= read -r link; do
+              # Only check relative links (not http/https/mailto)
+              if [[ "$link" =~ ^\.\./|^\./|^[a-zA-Z] ]] && [[ ! "$link" =~ ^https?:// ]] && [[ ! "$link" =~ ^mailto: ]]; then
+                dir=$(dirname "$mdfile")
+                resolved="${dir}/${link%%#*}"
+                # Normalize path
+                resolved=$(realpath --relative-to=. "$resolved" 2>/dev/null || echo "$resolved")
+                if [[ ! -e "$resolved" ]]; then
+                  msg="BROKEN_LINK in ${mdfile}: -> ${link}"
+                  echo "$msg"
+                  REPORT_LINES+=("$msg")
+                  ERRORS=$((ERRORS + 1))
+                fi
+              fi
+            done < <(grep -oP '\]\(\K[^)]+' "$mdfile" 2>/dev/null || true)
+          done < <(find docs/ -name "*.md")
+
+          echo "broken_link_count=${ERRORS}" >> "$GITHUB_OUTPUT"
+
+          if [[ ${#REPORT_LINES[@]} -gt 0 ]]; then
+            printf '%s\n' "${REPORT_LINES[@]}" >> validation-report.txt
+          else
+            echo "No broken links found." >> validation-report.txt
+          fi
+
+      - name: Check CHANGELOG is updated
+        id: changelog
+        run: |
+          echo "=== Reviewer: CHANGELOG check ==="
+          if [[ ! -f "CHANGELOG.md" ]]; then
+            echo "ERROR: CHANGELOG.md missing" | tee -a validation-report.txt
+            echo "changelog_ok=false" >> "$GITHUB_OUTPUT"
+          else
+            # Warn if only [Unreleased] section exists
+            released=$(grep -c '^\#\# \[' CHANGELOG.md || true)
+            if [[ "$released" -le 1 ]]; then
+              echo "WARNING: CHANGELOG.md has no released versions yet" | tee -a validation-report.txt
+            else
+              echo "CHANGELOG.md has ${released} section(s). OK."
+            fi
+            echo "changelog_ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check mkdocs.yml validity
+        id: mkdocs_config
+        run: |
+          echo "=== Reviewer: mkdocs.yml validation ==="
+          if [[ -f "mkdocs.yml" ]]; then
+            python3 -c "
+          import yaml, sys
+          with open('mkdocs.yml') as f:
+              cfg = yaml.safe_load(f)
+          required = ['site_name', 'docs_dir']
+          missing = [k for k in required if k not in cfg]
+          if missing:
+              print('ERROR: mkdocs.yml missing keys:', missing)
+              sys.exit(1)
+          print('mkdocs.yml is valid')
+          " | tee -a validation-report.txt
+          else
+            echo "mkdocs.yml not found — skipping" | tee -a validation-report.txt
+          fi
+
+      - name: Summarize validation report
+        run: |
+          echo "=== Validation Report Summary ==="
+          echo "" >> validation-report.txt
+          echo "---" >> validation-report.txt
+          echo "Coverage from content_strategist: ${{ needs.content_strategist.outputs.coverage_report }}" >> validation-report.txt
+          echo "Broken links: ${{ steps.links.outputs.broken_link_count }}" >> validation-report.txt
+          echo "CHANGELOG OK: ${{ steps.changelog.outputs.changelog_ok }}" >> validation-report.txt
+          cat validation-report.txt
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validation-report.txt
+          retention-days: 14
+
+      - name: Fail on validation errors
+        run: |
+          broken=${{ steps.links.outputs.broken_link_count }}
+          changelog=${{ steps.changelog.outputs.changelog_ok }}
+          if [[ "$broken" -gt 0 ]]; then
+            echo "FAIL: ${broken} broken internal link(s) found. Fix before merging."
+            exit 1
+          fi
+          if [[ "$changelog" == "false" ]]; then
+            echo "FAIL: CHANGELOG.md is missing."
+            exit 1
+          fi
+          echo "All validation gates passed."

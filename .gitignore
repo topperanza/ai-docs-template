@@ -1,0 +1,28 @@
+# MkDocs build output
+site/
+
+# Python virtualenvs
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.local
+
+# Local Claude state
+.claude/settings.local.json
+
+# Aider local histories/cache
+.aider.chat.history.md
+.aider.input.history
+.aider.analytics.json
+.aider.tags.cache.v*
+
+# PDF exports (generated, not committed)
+docs-export-*.pdf
+
+# OS/editor
+.DS_Store
+*.swp
+*.swo

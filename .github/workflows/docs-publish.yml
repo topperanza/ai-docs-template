@@ -1,0 +1,102 @@
+name: docs-publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even without docs changes'
+        required: false
+        default: 'false'
+
+# Allow only one concurrent deployment
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build docs site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for git-revision-date plugin
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install MkDocs and plugins
+        run: |
+          pip install --quiet \
+            mkdocs \
+            mkdocs-material \
+            mkdocs-git-revision-date-localized-plugin 2>&1 | tail -5
+          echo "MkDocs version: $(mkdocs --version)"
+
+      - name: Build MkDocs site
+        run: |
+          if [[ -f "mkdocs.yml" ]]; then
+            mkdocs build --strict --site-dir site/
+            echo "build_status=success" >> "$GITHUB_ENV"
+          else
+            echo "ERROR: mkdocs.yml not found. Cannot build docs site."
+            exit 1
+          fi
+
+      - name: Generate changelog artifact
+        run: bash scripts/docs-changelog.sh > site/CHANGELOG.txt 2>&1 || true
+
+      - name: Generate PDF export (best-effort via pandoc)
+        run: |
+          bash scripts/docs-export-pdf.sh 2>&1 || {
+            echo "PDF export skipped or failed (non-blocking)"
+          }
+          # Copy PDF to site if it exists
+          if ls docs-export-*.pdf 1>/dev/null 2>&1; then
+            cp docs-export-*.pdf site/
+            echo "PDF artifact included in site bundle"
+          fi
+
+      - name: Upload site bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site-bundle
+          path: site/
+          retention-days: 30
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Report deployment URL
+        run: |
+          echo "Docs published at: ${{ steps.deployment.outputs.page_url }}"

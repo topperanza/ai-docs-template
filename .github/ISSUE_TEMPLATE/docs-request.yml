@@ -1,0 +1,83 @@
+name: Docs Request
+description: Request new documentation, a revision, or a coverage gap fix
+title: "[docs] "
+labels:
+  - docs-request
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to request new documentation, a content revision, or to flag a coverage gap.
+        A **Content Strategist** will triage this issue and open a scoped PR.
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Audience
+      description: Who is the primary reader for this content?
+      options:
+        - End users / customers
+        - Contributors / developers
+        - Operators / administrators
+        - Internal team
+        - All of the above
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Gap
+      description: What question is unanswered, or what content is missing or wrong?
+      placeholder: |
+        Example: There is no guide explaining how to configure X. Users are filing support tickets asking about this.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: How much content does this require? (Rough estimate is fine.)
+      placeholder: |
+        Example: One new page (~500 words) under docs/setup/. Possibly update the nav and index.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done_criteria
+    attributes:
+      label: Done Criteria
+      description: How will we know this request is complete? Be specific.
+      placeholder: |
+        Example:
+        - [ ] New page docs/setup/configure-x.md exists and renders in mkdocs serve
+        - [ ] Page is linked from docs/index.md
+        - [ ] CHANGELOG.md updated
+        - [ ] No broken links in CI
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this request?
+      options:
+        - Low — nice to have, no deadline
+        - Medium — needed within the next sprint
+        - High — blocking users or team work
+        - Critical — production incident or active customer escalation
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Links to related issues, PRs, existing docs, or external references (optional).
+      placeholder: Related to #123, see also https://...
+    validations:
+      required: false
