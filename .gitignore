@@ -26,3 +26,4 @@ docs-export-*.pdf
 .DS_Store
 *.swp
 *.swo
+.venv/
