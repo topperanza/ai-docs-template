@@ -149,7 +149,7 @@ To force-publish without a docs change: use the `workflow_dispatch` trigger with
 
 ---
 
-## First Steps After Creating a Repo from This Template
+## Getting Started
 
 1. Update `mkdocs.yml` — set `site_name`, `site_url`, and `repo_url` for your repo.
 2. Replace `docs/index.md` with your project's landing page content.
@@ -157,11 +157,3 @@ To force-publish without a docs change: use the `workflow_dispatch` trigger with
 4. Choose your deployment profile:
    - **Public repo:** Enable GitHub Pages → Settings → Pages → Source: GitHub Actions.
    - **Private repo on GitHub Free:** No Pages setup needed — build artifacts are available in CI. See [docs/setup/private-local.md](docs/setup/private-local.md).
-5. Create a `docs-request` issue to initiate the first content cycle.
-6. Mark the repo as a **Template repository** in GitHub Settings if you plan to fork from it.
-
----
-
-## Template Readiness
-
-After pushing to GitHub, mark the repo as a **Template repository** in GitHub repository settings to enable "Use this template" for downstream repos.
