@@ -7,6 +7,18 @@ Versions use `YYYY.MM-N` date-based tags (e.g., `2026.03-1`).
 
 ## [Unreleased]
 
+### Added
+- `docs/setup/public-pages.md` — profile guide for public repos using GitHub Pages deployment.
+- `docs/setup/private-local.md` — profile guide for private/GitHub Free repos using local/CI-only builds.
+- `.github/pull_request_template.md` — PR checklist enforcing the triple-agent validation gates.
+
+### Changed
+- `docs-publish.yml` — `deploy` job now runs only for public repos or when `ENABLE_PAGES_DEPLOY` repository variable is set to `true`; Pages-specific steps (`configure-pages`, `upload-pages-artifact`) moved into the `deploy` job so the `build` job is usable by all repos. Private repos on GitHub Free no longer hit a failing deploy path.
+- `triple-agent-docs.yml` — renamed `reviewer_validator` job from "Publish Readiness" to "Merge Readiness" to reflect that validation is not gated on Pages availability.
+- `README.md` — added Deployment Profiles section explaining public Pages, private/free, and paid-private opt-in paths.
+- `docs/CONTRIBUTING.md` — updated handoff sequence and Reviewer/Validator outputs to note conditional deploy behaviour.
+- `mkdocs.yml` — added Setup section to nav for the two new profile guides.
+
 ## [2026.03-1] - 2026-03-17
 
 ### Added

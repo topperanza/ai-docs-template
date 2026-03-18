@@ -44,9 +44,6 @@ jobs:
         with:
           fetch-depth: 0  # full history for git-revision-date plugin
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -91,19 +88,36 @@ jobs:
           path: site/
           retention-days: 30
 
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    # Deploy only for public repos, or when explicitly opted in via repository variable.
+    # Private repos on GitHub Free do not have Pages access; skipping here avoids a hard
+    # failure. To deploy from a private repo on a paid plan, set the repository variable
+    # ENABLE_PAGES_DEPLOY to 'true' and configure Pages under Settings → Pages → Source:
+    # GitHub Actions. Note: a Pages site is always publicly accessible.
+    if: >
+      github.event.repository.visibility == 'public' ||
+      vars.ENABLE_PAGES_DEPLOY == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download site bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-site-bundle
+          path: site/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: site/
 
-  deploy:
-    name: Deploy to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

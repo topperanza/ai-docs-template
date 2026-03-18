@@ -45,7 +45,7 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 
 ### Role 3: Reviewer / Validator
 
-**Goal:** Confirm consistency, link integrity, and publishing readiness before merge.
+**Goal:** Confirm consistency, link integrity, and merge readiness before merge.
 
 **Responsibilities:**
 - Run `bash scripts/docs-validate.sh` and confirm PASS
@@ -53,12 +53,12 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 - Check that the PR description matches actual changes
 - Confirm `CHANGELOG.md` entry is present and accurate
 - Confirm `mkdocs.yml` nav reflects added or removed pages
-- Approve the PR and merge — this triggers the publish pipeline
+- Approve the PR and merge — this triggers the build pipeline (deploy runs only for public repos or opted-in private repos)
 
 **Outputs:**
 - PR approval
 - Validation report artifact (auto-uploaded by the CI workflow)
-- Merged PR → automatic deployment via `docs-publish.yml`
+- Merged PR → automatic deployment via `docs-publish.yml` (public repos and opted-in private repos; skipped for private repos on GitHub Free)
 
 ---
 
@@ -87,6 +87,8 @@ ISSUE (docs-request)
                            └── docs-publish.yml (auto)
                                    - builds MkDocs site
                                    - deploys to GitHub Pages
+                                     (public repos only; skipped
+                                      for private repos on GitHub Free)
 ```
 
 ---
@@ -125,7 +127,7 @@ When a `docs-request` issue is opened:
 2. A Content Strategist (human or agent) picks up the issue within one working day.
 3. The Strategist comments on the issue with: scope assessment, proposed outline, estimated pages, and urgency classification.
 4. A branch is created (`docs/<issue-slug>`) and a Draft PR opened.
-5. The issue remains open until the PR is merged and the page is live.
+5. The issue remains open until the PR is merged and the content passes all validation gates.
 
 ### Issue fields (from the `docs-request` template)
 
