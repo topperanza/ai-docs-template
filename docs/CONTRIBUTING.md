@@ -1,6 +1,10 @@
 # Contributing to This Documentation
 
-This repository uses a **triple-agent workflow** adapted for documentation production. All contributions — whether from humans or AI agents — follow the same three-role sequence.
+This repository uses a **triple-agent workflow** adapted for documentation production.
+All contributions — whether from humans or AI agents — follow the same three-role sequence.
+Codex is the default primary agent for executing these roles, validating the work, committing locally, and preparing the final PR handoff.
+Claude is optional for review and risk checks when access exists.
+Aider is optional for targeted narrow patches.
 
 ---
 
@@ -15,10 +19,10 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 - Define the information architecture (IA) for new or revised sections
 - Identify coverage gaps: what's missing, what's orphaned, what's out of date
 - Produce a scoped outline and acceptance criteria before any writing begins
-- Open a PR with the outline in place as a draft so the Technical Writer can proceed
+- Commit the outline to the working branch so the Technical Writer can proceed
 
 **Outputs:**
-- Scoped outline committed to the PR branch
+- Scoped outline committed to the working branch
 - Acceptance criteria listed in the PR description
 - Audience annotation in the draft (who will read this and why)
 
@@ -31,13 +35,13 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 **Responsibilities:**
 - Draft or rewrite content per the Content Strategist's outline
 - Follow the Markdown style guide (ATX headings, fenced code blocks, consistent admonitions)
-- Run `mkdocs serve` locally to confirm rendering before pushing
+- Run `mkdocs serve` locally to confirm rendering before handoff
 - Add cross-references and internal links; verify they resolve
 - Write code examples with correct syntax highlighting
 - Update `CHANGELOG.md` with a summary of changes in the `[Unreleased]` section
 
 **Outputs:**
-- Completed Markdown pages committed to the PR branch
+- Completed Markdown pages committed to the working branch
 - Local `mkdocs build --strict` passing with no warnings
 - `CHANGELOG.md` updated
 
@@ -50,10 +54,10 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 **Responsibilities:**
 - Run `bash scripts/docs-validate.sh` and confirm PASS
 - Verify all internal links resolve (the `triple-agent-docs.yml` workflow does this automatically)
-- Check that the PR description matches actual changes
+- Check that the prepared PR description matches actual changes
 - Confirm `CHANGELOG.md` entry is present and accurate
 - Confirm `mkdocs.yml` nav reflects added or removed pages
-- Approve the PR and merge — this triggers the build pipeline (deploy runs only for public repos or opted-in private repos)
+- After the operator opens the PR, approve and merge it in GitHub — this triggers the build pipeline (deploy runs only for public repos or opted-in private repos)
 
 **Outputs:**
 - PR approval
@@ -67,29 +71,57 @@ This repository uses a **triple-agent workflow** adapted for documentation produ
 ```
 ISSUE (docs-request)
    │
-   └── Content Strategist
+   └── Codex as Content Strategist
            - triages issue
            - creates branch: docs/<slug>
            - commits: outline + acceptance criteria
-           - opens Draft PR
            │
-           └── Technical Writer
+           └── Codex as Technical Writer
                    - drafts content on same branch
                    - runs local build
                    - updates CHANGELOG.md
-                   - marks PR Ready for Review
                    │
-                   └── Reviewer/Validator
+                   └── Codex as Reviewer/Validator
                            - runs scripts/docs-validate.sh
-                           - reviews CI results
-                           - approves and merges
+                           - runs mkdocs build --strict
+                           - confirms CHANGELOG and nav
+                           - commits locally
+                           - writes /tmp/<repo>-pr.md
+                           - reports gh-pr-ready command
                            │
-                           └── docs-publish.yml (auto)
-                                   - builds MkDocs site
-                                   - deploys to GitHub Pages
-                                     (public repos only; skipped
-                                      for private repos on GitHub Free)
+                           └── Operator
+                                   - reviews Codex's final report
+                                   - runs gh-pr-ready manually
+                                   │
+                                   └── GitHub review and merge
+                                           │
+                                           └── docs-publish.yml (auto)
+                                                   - builds MkDocs site
+                                                   - deploys to GitHub Pages
+                                                     (public repos only; skipped
+                                                      for private repos on GitHub Free)
 ```
+
+## Final PR Handoff
+
+For branch-based work:
+
+1. Codex implements the scoped documentation change.
+2. Codex runs the repository validation gates.
+3. Codex reviews the diff and commits locally on the feature branch.
+4. Codex writes the PR body to `/tmp/<repo>-pr.md`.
+5. Codex does not push or open the PR by default.
+6. Codex reports the exact command:
+
+   ```bash
+   gh-pr-ready "<PR title>" /tmp/<repo>-pr.md main
+   ```
+
+7. The operator reviews Codex's final report, then runs the helper manually from the repository.
+8. Review and merge happen in GitHub after the helper opens the PR.
+
+Keep one PR per repository.
+`gh-pr-ready` is an operator-local helper, not repository code, and must not be added here unless this repository intentionally begins owning local machine setup scripts.
 
 ---
 
@@ -102,6 +134,7 @@ All PRs must:
 3. **Include a CHANGELOG entry** — in the `[Unreleased]` section of `CHANGELOG.md`
 4. **Have an updated nav** — if pages were added or removed, `mkdocs.yml` nav must reflect this
 5. **Be reviewed by the Reviewer/Validator role** before merge
+6. **Use one PR per repository** — do not split a single workflow update across competing PRs
 
 ---
 
@@ -126,8 +159,10 @@ When a `docs-request` issue is opened:
 1. The `triple-agent-docs.yml` workflow triggers on the `docs-request` label.
 2. A Content Strategist (human or agent) picks up the issue within one working day.
 3. The Strategist comments on the issue with: scope assessment, proposed outline, estimated pages, and urgency classification.
-4. A branch is created (`docs/<issue-slug>`) and a Draft PR opened.
-5. The issue remains open until the PR is merged and the content passes all validation gates.
+4. A branch is created (`docs/<issue-slug>`) and the work is prepared and validated locally.
+5. Codex commits locally, writes `/tmp/<repo>-pr.md`, and reports `gh-pr-ready "<PR title>" /tmp/<repo>-pr.md main` without pushing by default.
+6. The operator reviews the final report and runs the helper manually to open the repository's single PR.
+7. The issue remains open until the PR is merged and the content passes all validation gates.
 
 ### Issue fields (from the `docs-request` template)
 

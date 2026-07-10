@@ -13,6 +13,8 @@ Versions use `YYYY.MM-N` date-based tags (e.g., `2026.03-1`).
 - `.github/pull_request_template.md` — PR checklist enforcing the triple-agent validation gates.
 
 ### Changed
+- AI-assisted documentation workflow — Codex is now the default primary agent for implementation, validation, local commits, and PR handoff preparation; Claude and Aider remain optional specialists.
+- Final branch PR handoff — Codex writes `/tmp/<repo>-pr.md` and reports the operator-local `gh-pr-ready "<PR title>" /tmp/<repo>-pr.md main` command without pushing by default.
 - `docs-publish.yml` — `deploy` job now runs only for public repos or when `ENABLE_PAGES_DEPLOY` repository variable is set to `true`; Pages-specific steps (`configure-pages`, `upload-pages-artifact`) moved into the `deploy` job so the `build` job is usable by all repos. Private repos on GitHub Free no longer hit a failing deploy path.
 - `triple-agent-docs.yml` — renamed `reviewer_validator` job from "Publish Readiness" to "Merge Readiness" to reflect that validation is not gated on Pages availability.
 - `README.md` — added Deployment Profiles section explaining public Pages, private/free, and paid-private opt-in paths.
