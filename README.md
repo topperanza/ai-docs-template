@@ -2,6 +2,9 @@
 
 A documentation-focused GitHub template that applies the **triple-agent workflow** to docs production — replacing coding-agent roles with Content Strategist, Technical Writer, and Reviewer/Validator.
 
+Codex is the default primary agent for carrying out those roles, validating the result, committing locally, and preparing the final pull request handoff.
+Claude remains optional for review and risk checks when access exists, and Aider remains optional for targeted narrow patches.
+
 Built on [MkDocs](https://www.mkdocs.org/) + [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
 Supports public GitHub Pages deployment and private/local-only builds from the same template.
 
@@ -56,18 +59,38 @@ This template is for teams that want to use multi-agent AI workflows not for sof
 docs-request issue
        │
        ▼
-Content Strategist  →  scopes, outlines, creates PR
+Content Strategist  →  scopes, outlines, prepares branch
        │
        ▼
 Technical Writer    →  drafts content, local mkdocs build
        │
        ▼
-Reviewer/Validator  →  validates, approves, merges
+Reviewer/Validator  →  validates content and publish readiness
+       │
+       ▼
+Codex               →  commits locally, writes /tmp/<repo>-pr.md
+       │
+       ▼
+Operator            →  reviews report, runs gh-pr-ready manually
+       │
+       ▼
+GitHub review       →  approves and merges
        │
        ▼
 docs-publish.yml    →  builds site (all repos)
                        deploys to GitHub Pages (public repos / paid opt-in)
 ```
+
+Codex does not push or open the PR by default.
+After validation and a local commit, Codex reports the exact operator-local handoff command:
+
+```bash
+gh-pr-ready "<PR title>" /tmp/<repo>-pr.md main
+```
+
+The operator reviews Codex's final report before running the helper.
+Keep one PR per repository.
+`gh-pr-ready` is operator-local tooling and is not part of this template's runtime or repository setup.
 
 ---
 
